@@ -18,6 +18,11 @@ import functools
 from multilingual_t5 import preprocessors
 from multilingual_t5 import utils
 
+from sumeval.metrics.lang.lang_ja import LangJA
+from sacrebleu import corpus_bleu, TOKENIZERS
+
+
+
 import t5.data
 from t5.evaluation import metrics
 import tensorflow_datasets as tfds
@@ -468,4 +473,51 @@ t5.data.TaskRegistry.add(
         summary_key="highlights"),
     metric_fns=[metrics.rouge],
     output_features=DEFAULT_OUTPUT_FEATURES)
+
+
+
+
+
+
+
+
+
+
+
+lang_ja = LangJA()
+def tokenizer_ja(text):
+  words = lang_ja.tokenize_with_preprocess(text)
+  return " ".join(words)
+TOKENIZERS["ja"] = tokenizer_ja
+
+def bleu(targets, predictions):
+  predictions = [tf.compat.as_text(x) for x in predictions]
+
+  if isinstance(targets[0], list):
+    targets = [[tf.compat.as_text(x) for x in target] for target in targets]
+  else:
+    targets = [tf.compat.as_text(x) for x in targets]
+    targets = [targets]
+
+  bleu_score = corpus_bleu(predictions, targets,smooth_method="exp", smooth_value=0.0,
+                 force=False,lowercase=False,tokenize="ja", use_effective_order=False)
+  return {"bleu": bleu_score.score}
+
+snow_tsv_path = {
+    "train": "./train.tsv",
+    "validation": "./val.tsv",
+    "test": "./test.tsv",
+}
+
+t5.data.TaskRegistry.add(
+    'snow',
+    t5.data.TextLineTask,
+    split_to_filepattern=snow_tsv_path,
+    text_preprocessor=[
+      functools.partial(
+          preprocessors.parse_tsv,
+          field_names=["inputs", "targets"]),
+    ],
+    output_features=DEFAULT_OUTPUT_FEATURES,
+    metric_fns=[bleu])
 
