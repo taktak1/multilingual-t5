@@ -15,6 +15,8 @@
 """Preprocessors for Multilingual T5."""
 
 import tensorflow.compat.v2 as tf
+from t5.data.preprocessors import parse_tsv
+
 
 
 def _string_join(lst):
